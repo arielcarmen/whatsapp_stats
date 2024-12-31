@@ -14,7 +14,8 @@ def extract_group_details(uploaded_file):
     Returns:
         tuple: Dictionnaire des utilisateurs et leurs données, et une liste des horodatages.
     """
-    group_info = None
+    group_info = ""
+    group_name = ""
     group_creation_pattern = r'^(\d{2}/\d{2}/\d{4}, \d{2}:\d{2}) - ([^:]+) a créé le groupe \"(.*?)\"'
     try:
 
@@ -130,15 +131,17 @@ def analyse_datas(results, group_name, keyword):
 
 # EXECUTION
 st.title(':green[Whastats]')
-file = st.file_uploader("Importer vos données de discussion", type=["txt"])
+file = st.file_uploader("Importer vos données de discussion:", type=["txt"])
 
 # Vérification si un fichier a été téléchargé
 if file is not None:
+    group_name = "Aucun groupe trouvé"
     group_infos, group_name = extract_group_details(file)
     
     st.write(group_infos)
-    keyword = st.text_input("Mot-clé (rien pour les stats globales)", "")
+    
     if group_infos:
+        keyword = st.text_input("Mot-clé (laissez vide pour les stats globales)", "")
         if st.button("Stats"):
             results, timestamps = analyze_messages(file, keyword)
             analyse_datas(results, group_name, keyword)
