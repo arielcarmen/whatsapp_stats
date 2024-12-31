@@ -4,40 +4,33 @@ from collections import defaultdict
 import re
 import datetime
 
-# def analyze_messages(file_path):
-#     # Dictionnaire pour stocker les comptes des utilisateurs et leurs premiers messages
-#     user_message_data = defaultdict(lambda: {"count": 0, "first_message": None})
-#     timestamps = []
+def extract_group_details(uploaded_file):
+    """
+    Analyse les messages d'un fichier téléchargé via Streamlit.
+    
+    Args:
+        uploaded_file (UploadedFile): Fichier téléchargé via Streamlit.
+        
+    Returns:
+        tuple: Dictionnaire des utilisateurs et leurs données, et une liste des horodatages.
+    """
+    group_info = None
+    group_creation_pattern = r'^(\d{2}/\d{2}/\d{4}, \d{2}:\d{2}) - ([^:]+) a créé le groupe \"(.*?)\"'
+    try:
 
-#     # Expression régulière pour extraire les informations
-#     pattern = r'^(\d{2}/\d{2}/\d{4}, \d{2}:\d{2}) - ([^:]+):'
+        for line in uploaded_file.getvalue().decode("utf-8").splitlines():
+            group_match = re.match(group_creation_pattern, line)
+            if group_match:
+                creation_date, creator, group_name = group_match.groups()
+                group_info = f"{group_name}, créé par {creator} le {creation_date}"
 
-#     try:
-#         # Lecture du fichier
-#         with open(file_path, 'r', encoding='utf-8') as file:
-#             for line in file:
-#                 match = re.match(pattern, line)
-#                 if match:
-#                     timestamp, user = match.groups()
-#                     timestamps.append(timestamp)
-                    
-#                     # Mettre à jour le compte des messages
-#                     user_data = user_message_data[user.strip()]
-#                     user_data["count"] += 1
+    except Exception as e:
+        print(f"Une erreur s'est produite : {e}")
+        return {}, []
 
-#                     # Enregistrer le premier message si ce n'est pas encore défini
-#                     if user_data["first_message"] is None:
-#                         user_data["first_message"] = timestamp
-#     except FileNotFoundError:
-#         print(f"Le fichier '{file_path}' n'a pas été trouvé.")
-#         return {}, []
-#     except Exception as e:
-#         print(f"Une erreur s'est produite : {e}")
-#         return {}, []
+    return group_info, group_name
 
-#     return user_message_data, timestamps
-
-def analyze_messages(uploaded_file):
+def analyze_messages(uploaded_file, keyword):
     """
     Analyse les messages d'un fichier téléchargé via Streamlit.
     
@@ -50,40 +43,33 @@ def analyze_messages(uploaded_file):
     # Dictionnaire pour stocker les comptes des utilisateurs et leurs premiers messages
     user_message_data = defaultdict(lambda: {"count": 0, "first_message": None})
     timestamps = []
-    group_info = None
-    group_name = None
 
     # Expression régulière pour extraire les informations
     pattern = r'^(\d{2}/\d{2}/\d{4}, \d{2}:\d{2}) - ([^:]+):'
-    group_creation_pattern = r'^(\d{2}/\d{2}/\d{4}, \d{2}:\d{2}) - ([^:]+) a créé le groupe \"(.*?)\"'
 
     try:
         # Lecture du contenu du fichier depuis l'objet UploadedFile
         for line in uploaded_file.getvalue().decode("utf-8").splitlines():
-            match = re.match(pattern, line)
+            # match = re.match(pattern, line)
+            match = re.match(r"^(\d{2}/\d{2}/\d{4}, \d{2}:\d{2}) - ([^:]+): (.+)", line)
             if match:
-                timestamp, user = match.groups()
-                timestamps.append(timestamp)
+                timestamp, user, content = match.groups()
+                if keyword.lower() in content.lower():
 
-                # Mettre à jour le compte des messages
-                user_data = user_message_data[user.strip()]
-                user_data["count"] += 1
+                    timestamps.append(timestamp)
+                    # Mettre à jour le compte des messages
+                    user_data = user_message_data[user.strip()]
+                    user_data["count"] += 1
 
-                # Enregistrer le premier message si ce n'est pas encore défini
-                if user_data["first_message"] is None:
-                    user_data["first_message"] = timestamp
-                    
-            group_match = re.match(group_creation_pattern, line)
-            if group_match:
-                creation_date, creator, group_name = group_match.groups()
-                group_info = f"{group_name}, créé par {creator} le {creation_date}"
+                    # Enregistrer le premier message si ce n'est pas encore défini
+                    if user_data["first_message"] is None:
+                        user_data["first_message"] = timestamp
 
     except Exception as e:
         print(f"Une erreur s'est produite : {e}")
         return {}, []
 
-    return user_message_data, timestamps, group_info, group_name
-
+    return user_message_data, timestamps
 
 def write_to_file(output_path, content):
     try:
@@ -93,7 +79,7 @@ def write_to_file(output_path, content):
     except Exception as e:
         print(f"Une erreur s'est produite lors de l'écriture du fichier : {e}")
 
-def analyse_datas(results, group_name):
+def analyse_datas(results, group_name, keyword):
     # Déterminer les premières et dernières dates globales
     dates = []
     for timestamp in timestamps:
@@ -117,7 +103,11 @@ def analyse_datas(results, group_name):
     # Construire le contenu à écrire
     output_content = []
     output_content.append(f"Total des messages entre : {first_message} et {last_message}\n\n")
-    output_content.append("Liste des utilisateurs et nombre total de messages :\n")
+
+    if keyword is not "":
+        output_content.append("Liste des utilisateurs ayant envoyé : '"+ keyword +"'\n")
+    else:
+        output_content.append("Liste des utilisateurs et nombre total de messages :\n")
     
     for idx, (user, data) in enumerate(sorted(results.items(), key=lambda x: x[1]["count"], reverse=True), start=1):
         output_content.append(f"{idx}. {user} (Premier message : {data['first_message']}) : {data['count']}\n")
@@ -144,10 +134,13 @@ file = st.file_uploader("Importer vos données de discussion", type=["txt"])
 
 # Vérification si un fichier a été téléchargé
 if file is not None:
-    results, timestamps, group_infos, group_name = analyze_messages(file)
+    group_infos, group_name = extract_group_details(file)
+    
     st.write(group_infos)
-    if results:
+    keyword = st.text_input("Mot-clé (rien pour les stats globales)", "")
+    if group_infos:
         if st.button("Stats"):
-            analyse_datas(results, group_name)
+            results, timestamps = analyze_messages(file, keyword)
+            analyse_datas(results, group_name, keyword)
     else:
         st.write("Aucune donnée trouvée")
