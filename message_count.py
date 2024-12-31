@@ -8,6 +8,7 @@ def analyze_messages(file_path):
 
     # Expression régulière pour extraire les informations
     pattern = r'^(\d{2}/\d{2}/\d{4}, \d{2}:\d{2}) - ([^:]+):'
+    group_name_pattern = r'\"(.*?)\"'
 
     try:
         # Lecture du fichier
@@ -25,6 +26,12 @@ def analyze_messages(file_path):
                     # Enregistrer le premier message si ce n'est pas encore défini
                     if user_data["first_message"] is None:
                         user_data["first_message"] = timestamp
+
+                if 'a créé le groupe' in line:
+                    group_match = re.search(group_name_pattern, line)
+                    if group_match:
+                        group_name = group_match.group(1)
+
     except FileNotFoundError:
         print(f"Le fichier '{file_path}' n'a pas été trouvé.")
         return {}, []
@@ -44,8 +51,9 @@ def write_to_file(output_path, content):
 
 if __name__ == "__main__":
     # Chemin vers le fichier contenant les messages
-    input_file_path = "SAUCE.txt"
+    input_file_path = "d.txt"
     output_file_path = "total_messages.txt"
+    group_name = ""
     
     # Analyser les messages et récupérer les timestamps
     results, timestamps = analyze_messages(input_file_path)
@@ -73,6 +81,7 @@ if __name__ == "__main__":
         
         # Afficher dans la console
         print(output_string)
+        print(group_name)
         
         # Écrire dans un fichier texte
         write_to_file(output_file_path, output_string)

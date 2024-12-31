@@ -2,8 +2,7 @@ import streamlit as st
 
 from collections import defaultdict
 import re
-import pandas as pd
-
+import datetime
 
 # def analyze_messages(file_path):
 #     # Dictionnaire pour stocker les comptes des utilisateurs et leurs premiers messages
@@ -51,9 +50,12 @@ def analyze_messages(uploaded_file):
     # Dictionnaire pour stocker les comptes des utilisateurs et leurs premiers messages
     user_message_data = defaultdict(lambda: {"count": 0, "first_message": None})
     timestamps = []
+    group_info = None
+    group_name = None
 
     # Expression régulière pour extraire les informations
     pattern = r'^(\d{2}/\d{2}/\d{4}, \d{2}:\d{2}) - ([^:]+):'
+    group_creation_pattern = r'^(\d{2}/\d{2}/\d{4}, \d{2}:\d{2}) - ([^:]+) a créé le groupe \"(.*?)\"'
 
     try:
         # Lecture du contenu du fichier depuis l'objet UploadedFile
@@ -70,11 +72,17 @@ def analyze_messages(uploaded_file):
                 # Enregistrer le premier message si ce n'est pas encore défini
                 if user_data["first_message"] is None:
                     user_data["first_message"] = timestamp
+                    
+            group_match = re.match(group_creation_pattern, line)
+            if group_match:
+                creation_date, creator, group_name = group_match.groups()
+                group_info = f"{group_name}, créé par {creator} le {creation_date}"
+
     except Exception as e:
         print(f"Une erreur s'est produite : {e}")
         return {}, []
 
-    return user_message_data, timestamps
+    return user_message_data, timestamps, group_info, group_name
 
 
 def write_to_file(output_path, content):
@@ -85,17 +93,30 @@ def write_to_file(output_path, content):
     except Exception as e:
         print(f"Une erreur s'est produite lors de l'écriture du fichier : {e}")
 
-def analyse_datas(results):
+def analyse_datas(results, group_name):
     # Déterminer les premières et dernières dates globales
-    first_message = min(timestamps) if timestamps else "Inconnu"
-    last_message = max(timestamps) if timestamps else "Inconnu"
+    dates = []
+    for timestamp in timestamps:
+        try:
+            date_obj = datetime.datetime.strptime(timestamp, '%d/%m/%Y, %H:%M')
+            dates.append(date_obj)
+        except ValueError:
+            continue
+
+    # Déterminer les premières et dernières dates globales
+    if dates:
+        first_message = min(dates).strftime('%d/%m/%Y, %H:%M')
+        last_message = max(dates).strftime('%d/%m/%Y, %H:%M')
+    else:
+        first_message = "Inconnu"
+        last_message = "Inconnu"
     
     # Calculer le total des messages
     total_messages = sum(user_data["count"] for user_data in results.values())
     
     # Construire le contenu à écrire
     output_content = []
-    output_content.append(f"Total des messages entre : {first_message} et {last_message}\n")
+    output_content.append(f"Total des messages entre : {first_message} et {last_message}\n\n")
     output_content.append("Liste des utilisateurs et nombre total de messages :\n")
     
     for idx, (user, data) in enumerate(sorted(results.items(), key=lambda x: x[1]["count"], reverse=True), start=1):
@@ -109,6 +130,13 @@ def analyse_datas(results):
     # Afficher dans la console
     st.write(output_string)
 
+    st.download_button(
+        label="Télécharger en txt",
+        data=output_string,
+        file_name= group_name+"_export.txt",
+        mime="text/plain"
+    )
+
 
 # EXECUTION
 st.title(':green[Whastats]')
@@ -116,9 +144,10 @@ file = st.file_uploader("Importer vos données de discussion", type=["txt"])
 
 # Vérification si un fichier a été téléchargé
 if file is not None:
-    results, timestamps = analyze_messages(file)
+    results, timestamps, group_infos, group_name = analyze_messages(file)
+    st.write(group_infos)
     if results:
         if st.button("Stats"):
-            analyse_datas(results)
+            analyse_datas(results, group_name)
     else:
         st.write("Aucune donnée trouvée")
