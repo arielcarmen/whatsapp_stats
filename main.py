@@ -140,7 +140,7 @@ if file is not None:
     
     st.write(group_infos)
     
-    if group_infos:
+    if group_infos or True:
         keyword = st.text_input("Mot-clé (laissez vide pour les stats globales)", "")
         if st.button("Stats"):
             results, timestamps = analyze_messages(file, keyword)
