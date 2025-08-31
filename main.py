@@ -108,7 +108,7 @@ def analyse_datas(results, group_name, keyword):
     output_content = []
     output_content.append(f"Total des messages entre : {first_message} et {last_message}\n\n")
 
-    if keyword is not "":
+    if keyword != "":
         output_content.append("Liste des utilisateurs ayant envoyé : '"+ keyword +"'\n")
     else:
         output_content.append("Liste des utilisateurs et nombre total de messages :\n")
@@ -133,7 +133,7 @@ def analyse_datas(results, group_name, keyword):
 
 
 # EXECUTION
-st.title(':green[Whastats]')
+st.title(':blue[Whastats]')
 file = st.file_uploader("Importer vos données de discussion:", type=["txt"])
 
 # Vérification si un fichier a été téléchargé
