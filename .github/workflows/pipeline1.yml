@@ -1,0 +1,5 @@
+name: Mywflow
+on:
+  push:
+    branches:
+      - main
