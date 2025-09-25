@@ -127,7 +127,7 @@ def analyse_datas(results, group_name, keyword):
     st.download_button(
         label="Télécharger en txt",
         data=output_string,
-        file_name= group_name+"_export.txt",
+        file_name= group_name+"_eexport.txt",
         mime="text/plain"
     )
 
