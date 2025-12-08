@@ -191,31 +191,11 @@ if file is not None:
         # Obtenir la plage de dates disponibles
         date_min, date_max = get_date_range(file)
         
-        # Initialise session state pour conserver les choix entre reruns
-        if 'date_start' not in st.session_state:
-            st.session_state['date_start'] = date_min
-        if 'date_end' not in st.session_state:
-            st.session_state['date_end'] = date_max
-
         col1, col2 = st.columns(2)
         with col1:
-            # La date de début ne peut pas dépasser la date de fin actuelle
-            date_start = st.date_input(
-                "Date de début",
-                value=st.session_state.get('date_start', date_min),
-                min_value=date_min,
-                max_value=st.session_state.get('date_end', date_max),
-                key='date_start'
-            )
+            date_start = st.date_input("Date de début", value=date_min, min_value=date_min, max_value=date_max)
         with col2:
-            # La date de fin ne peut pas être antérieure à la date de début actuelle
-            date_end = st.date_input(
-                "Date de fin",
-                value=st.session_state.get('date_end', date_max),
-                min_value=st.session_state.get('date_start', date_min),
-                max_value=date_max,
-                key='date_end'
-            )
+            date_end = st.date_input("Date de fin", value=date_max, min_value=date_min, max_value=date_max)
         
         keyword = st.text_input("Mot-clé (laissez vide pour les stats globales)", "")
         if st.button("Stats"):
