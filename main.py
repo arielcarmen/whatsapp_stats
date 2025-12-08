@@ -77,13 +77,9 @@ def analyze_messages(uploaded_file, keyword, date_start=None, date_end=None):
     user_message_data = defaultdict(lambda: {"count": 0, "first_message": None})
     timestamps = []
 
-    # Expression régulière pour extraire les informations
-    pattern = r'^(\d{2}/\d{2}/\d{4}, \d{2}:\d{2}) - ([^:]+):'
-
     try:
         # Lecture du contenu du fichier depuis l'objet UploadedFile
         for line in uploaded_file.getvalue().decode("utf-8").splitlines():
-            # match = re.match(pattern, line)
             match = re.match(r"^(\d{2}/\d{2}/\d{4}, \d{2}:\d{2}) - ([^:]+): (.+)", line)
             if match:
                 timestamp, user, content = match.groups()
@@ -101,9 +97,7 @@ def analyze_messages(uploaded_file, keyword, date_start=None, date_end=None):
                 
                 pattern = r'\b' + re.escape(keyword.lower()) + r'\b'
 
-                # if keyword.lower() in content.lower():
                 if re.search(pattern, content.lower()) is not None:
-
                     timestamps.append(timestamp)
                     # Mettre à jour le compte des messages
                     user_data = user_message_data[user.strip()]
@@ -127,7 +121,7 @@ def write_to_file(output_path, content):
     except Exception as e:
         print(f"Une erreur s'est produite lors de l'écriture du fichier : {e}")
 
-def analyse_datas(results, group_name, keyword):
+def analyse_datas(results, group_name, keyword, timestamps):
     # Déterminer les premières et dernières dates globales
     dates = []
     for timestamp in timestamps:
@@ -200,6 +194,6 @@ if file is not None:
         keyword = st.text_input("Mot-clé (laissez vide pour les stats globales)", "")
         if st.button("Stats"):
             results, timestamps = analyze_messages(file, keyword, date_start, date_end)
-            analyse_datas(results, group_name, keyword)
+            analyse_datas(results, group_name, keyword, timestamps)
     else:
         st.write("Aucune donnée trouvée")
