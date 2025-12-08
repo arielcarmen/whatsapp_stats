@@ -31,12 +31,44 @@ def extract_group_details(uploaded_file):
 
     return group_info, group_name
 
-def analyze_messages(uploaded_file, keyword):
+def get_date_range(uploaded_file):
+    """
+    Extrait les dates min et max des messages du fichier.
+    
+    Args:
+        uploaded_file (UploadedFile): Fichier téléchargé via Streamlit.
+        
+    Returns:
+        tuple: (date_min, date_max) en tant qu'objets datetime
+    """
+    dates = []
+    try:
+        for line in uploaded_file.getvalue().decode("utf-8").splitlines():
+            match = re.match(r"^(\d{2}/\d{2}/\d{4}), \d{2}:\d{2}", line)
+            if match:
+                date_str = match.group(1)
+                try:
+                    date_obj = datetime.datetime.strptime(date_str, '%d/%m/%Y')
+                    dates.append(date_obj)
+                except ValueError:
+                    continue
+    except Exception as e:
+        print(f"Une erreur s'est produite : {e}")
+        return None, None
+    
+    if dates:
+        return min(dates).date(), max(dates).date()
+    return None, None
+
+def analyze_messages(uploaded_file, keyword, date_start=None, date_end=None):
     """
     Analyse les messages d'un fichier téléchargé via Streamlit.
     
     Args:
         uploaded_file (UploadedFile): Fichier téléchargé via Streamlit.
+        keyword (str): Mot-clé à rechercher
+        date_start (date): Date de début du filtrage
+        date_end (date): Date de fin du filtrage
         
     Returns:
         tuple: Dictionnaire des utilisateurs et leurs données, et une liste des horodatages.
@@ -55,6 +87,18 @@ def analyze_messages(uploaded_file, keyword):
             match = re.match(r"^(\d{2}/\d{2}/\d{4}, \d{2}:\d{2}) - ([^:]+): (.+)", line)
             if match:
                 timestamp, user, content = match.groups()
+                
+                # Vérifier le filtre de dates si spécifié
+                if date_start or date_end:
+                    try:
+                        msg_date = datetime.datetime.strptime(timestamp, '%d/%m/%Y, %H:%M').date()
+                        if date_start and msg_date < date_start:
+                            continue
+                        if date_end and msg_date > date_end:
+                            continue
+                    except ValueError:
+                        continue
+                
                 pattern = r'\b' + re.escape(keyword.lower()) + r'\b'
 
                 # if keyword.lower() in content.lower():
@@ -144,9 +188,18 @@ if file is not None:
     st.write(group_infos)
     
     if group_infos or True:
+        # Obtenir la plage de dates disponibles
+        date_min, date_max = get_date_range(file)
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            date_start = st.date_input("Date de début", value=date_min, min_value=date_min, max_value=date_max)
+        with col2:
+            date_end = st.date_input("Date de fin", value=date_max, min_value=date_min, max_value=date_max)
+        
         keyword = st.text_input("Mot-clé (laissez vide pour les stats globales)", "")
         if st.button("Stats"):
-            results, timestamps = analyze_messages(file, keyword)
+            results, timestamps = analyze_messages(file, keyword, date_start, date_end)
             analyse_datas(results, group_name, keyword)
     else:
         st.write("Aucune donnée trouvée")
