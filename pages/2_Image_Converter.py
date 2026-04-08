@@ -21,13 +21,14 @@ st.divider()
 with st.expander("How to Use", expanded=False):
     st.write(
         """
-        1. Select multiple images from your device (JPG, JPEG, or PNG format)
-        2. Images will be processed in alphabetical order
-        3. Each image will be placed on a separate page in the PDF
-        4. Click 'Convert to PDF' to generate the file
-        5. Download your PDF file
+        1. Select multiple images from your device (JPG, JPEG, PNG, or WEBP format)
+        2. You can mix different image formats in a single upload
+        3. Images will be processed in alphabetical order
+        4. Each image will be placed on a separate page in the PDF
+        5. Click 'Convert to PDF' to generate the file
+        6. Download your PDF file
         
-        Supported formats: JPG, JPEG, PNG
+        Supported formats: JPG, JPEG, PNG, WEBP
         """
     )
 
@@ -39,9 +40,9 @@ st.write("Select one or more images to convert:")
 
 uploaded_files = st.file_uploader(
     "Choose image files",
-    type=["jpg", "jpeg", "png"],
+    type=["jpg", "jpeg", "png", "webp"],
     accept_multiple_files=True,
-    help="You can select multiple images at once"
+    help="You can select multiple images at once (supports JPG, JPEG, PNG, and WEBP formats)"
 )
 
 if uploaded_files:

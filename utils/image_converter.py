@@ -11,13 +11,16 @@ def validate_image_file(uploaded_file):
     """
     Validate if the uploaded file is a valid image format.
     
+    Supported formats: JPG, JPEG, PNG, WEBP
+    
     Args:
         uploaded_file (UploadedFile): Uploaded file via Streamlit.
         
     Returns:
         bool: True if valid image format, False otherwise.
     """
-    valid_formats = {'jpg', 'jpeg', 'png'}
+    # Include WEBP format alongside traditional image formats
+    valid_formats = {'jpg', 'jpeg', 'png', 'webp'}
     file_ext = uploaded_file.name.split('.')[-1].lower()
     return file_ext in valid_formats
 
@@ -48,7 +51,8 @@ def convert_images_to_pdf(uploaded_files):
             try:
                 image = Image.open(uploaded_file)
                 
-                # Convert RGBA or other formats to RGB
+                # Convert RGBA, WEBP, or other formats to RGB for PDF compatibility
+                # This handles transparency in PNG/WEBP and ensures PDF compatibility
                 if image.mode != 'RGB':
                     image = image.convert('RGB')
                 
@@ -57,7 +61,7 @@ def convert_images_to_pdf(uploaded_files):
                 return None, f"Error processing {uploaded_file.name}: {str(e)}"
         
         if not images:
-            return None, "No valid images found. Supported formats: JPG, JPEG, PNG"
+            return None, "No valid images found. Supported formats: JPG, JPEG, PNG, WEBP"
         
         # Create PDF from images
         # Use the first image as the base and append others
