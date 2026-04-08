@@ -230,7 +230,6 @@ docker run -p 8501:8501 whatsapp-stats
 **Recent Updates:**
 - Added Image to PDF Converter feature
 - Replaced placeholder page with functional utility
-- Removed all emojis for professional appearance
 - Expanded Home page with comprehensive guides
 - Improved error handling and user feedback
 
