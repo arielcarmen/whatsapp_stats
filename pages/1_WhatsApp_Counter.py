@@ -14,7 +14,6 @@ from utils.analyzer import (
 # Configure page metadata
 st.set_page_config(
     page_title="WhatsApp Counter",
-    page_icon="�",
     layout="wide"
 )
 

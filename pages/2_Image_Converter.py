@@ -9,7 +9,6 @@ from utils.image_converter import convert_images_to_pdf, estimate_pdf_size, vali
 # Configure page metadata
 st.set_page_config(
     page_title="Image to PDF Converter",
-    page_icon="📄",
     layout="wide"
 )
 
