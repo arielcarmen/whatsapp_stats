@@ -1,199 +1,272 @@
+"""
+Whatsapp Stats - Multi-Page Streamlit Application
+Main entry point and home page of the application.
+"""
+
 import streamlit as st
 
-from collections import defaultdict
-import re
-import datetime
+# Configure page metadata
+st.set_page_config(
+    page_title="Whatsapp Stats",
+    page_icon="�",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-def extract_group_details(uploaded_file):
-    """
-    Analyse les messages d'un fichier téléchargé via Streamlit.
-    
-    Args:
-        uploaded_file (UploadedFile): Fichier téléchargé via Streamlit.
+# Page title and welcome message
+st.title("Whatsapp Stats")
+st.markdown("### Your All-in-One Utility Application")
+
+st.divider()
+
+# Introduction section
+col1, col2 = st.columns([2, 1])
+
+with col1:
+    st.header("Welcome to Whatsapp Stats")
+    st.write(
+        """
+        Whatsapp Stats is a comprehensive utility application designed to help you with two primary tasks:
         
-    Returns:
-        tuple: Dictionnaire des utilisateurs et leurs données, et une liste des horodatages.
-    """
-    group_info = ""
-    group_name = ""
-    group_creation_pattern = r'^(\d{2}/\d{2}/\d{4}, \d{2}:\d{2}) - ([^:]+) a créé le groupe \"(.*?)\"'
-    try:
-
-        for line in uploaded_file.getvalue().decode("utf-8").splitlines():
-            group_match = re.match(group_creation_pattern, line)
-            if group_match:
-                creation_date, creator, group_name = group_match.groups()
-                group_info = f"{group_name}, créé par {creator} le {creation_date}"
-
-    except Exception as e:
-        print(f"Une erreur s'est produite : {e}")
-        return {}, []
-
-    return group_info, group_name
-
-def get_date_range(uploaded_file):
-    """
-    Extrait les dates min et max des messages du fichier.
-    
-    Args:
-        uploaded_file (UploadedFile): Fichier téléchargé via Streamlit.
+        1. **Analyze WhatsApp chat exports** and generate detailed statistics about message counts and user activity
+        2. **Convert multiple images** into a single, organized PDF document
         
-    Returns:
-        tuple: (date_min, date_max) en tant qu'objets datetime
-    """
-    dates = []
-    try:
-        for line in uploaded_file.getvalue().decode("utf-8").splitlines():
-            match = re.match(r"^(\d{2}/\d{2}/\d{4}), \d{2}:\d{2}", line)
-            if match:
-                date_str = match.group(1)
-                try:
-                    date_obj = datetime.datetime.strptime(date_str, '%d/%m/%Y')
-                    dates.append(date_obj)
-                except ValueError:
-                    continue
-    except Exception as e:
-        print(f"Une erreur s'est produite : {e}")
-        return None, None
-    
-    if dates:
-        return min(dates).date(), max(dates).date()
-    return None, None
-
-def analyze_messages(uploaded_file, keyword, date_start=None, date_end=None):
-    """
-    Analyse les messages d'un fichier téléchargé via Streamlit.
-    
-    Args:
-        uploaded_file (UploadedFile): Fichier téléchargé via Streamlit.
-        keyword (str): Mot-clé à rechercher
-        date_start (date): Date de début du filtrage
-        date_end (date): Date de fin du filtrage
-        
-    Returns:
-        tuple: Dictionnaire des utilisateurs et leurs données, et une liste des horodatages.
-    """
-    # Dictionnaire pour stocker les comptes des utilisateurs et leurs premiers messages
-    user_message_data = defaultdict(lambda: {"count": 0, "first_message": None})
-    timestamps = []
-
-    try:
-        # Lecture du contenu du fichier depuis l'objet UploadedFile
-        for line in uploaded_file.getvalue().decode("utf-8").splitlines():
-            match = re.match(r"^(\d{2}/\d{2}/\d{4}, \d{2}:\d{2}) - ([^:]+): (.+)", line)
-            if match:
-                timestamp, user, content = match.groups()
-                
-                # Vérifier le filtre de dates si spécifié
-                if date_start or date_end:
-                    try:
-                        msg_date = datetime.datetime.strptime(timestamp, '%d/%m/%Y, %H:%M').date()
-                        if date_start and msg_date < date_start:
-                            continue
-                        if date_end and msg_date > date_end:
-                            continue
-                    except ValueError:
-                        continue
-                
-                pattern = r'\b' + re.escape(keyword.lower()) + r'\b'
-
-                if re.search(pattern, content.lower()) is not None:
-                    timestamps.append(timestamp)
-                    # Mettre à jour le compte des messages
-                    user_data = user_message_data[user.strip()]
-                    user_data["count"] += 1
-
-                    # Enregistrer le premier message si ce n'est pas encore défini
-                    if user_data["first_message"] is None:
-                        user_data["first_message"] = timestamp
-
-    except Exception as e:
-        print(f"Une erreur s'est produite : {e}")
-        return {}, []
-
-    return user_message_data, timestamps
-
-def write_to_file(output_path, content):
-    try:
-        with open(output_path, 'w', encoding='utf-8') as file:
-            file.write(content)
-        print(f"Les résultats ont été écrits dans le fichier : {output_path}")
-    except Exception as e:
-        print(f"Une erreur s'est produite lors de l'écriture du fichier : {e}")
-
-def analyse_datas(results, group_name, keyword, timestamps):
-    # Déterminer les premières et dernières dates globales
-    dates = []
-    for timestamp in timestamps:
-        try:
-            date_obj = datetime.datetime.strptime(timestamp, '%d/%m/%Y, %H:%M')
-            dates.append(date_obj)
-        except ValueError:
-            continue
-
-    # Déterminer les premières et dernières dates globales
-    if dates:
-        first_message = min(dates).strftime('%d/%m/%Y, %H:%M')
-        last_message = max(dates).strftime('%d/%m/%Y, %H:%M')
-    else:
-        first_message = "Inconnu"
-        last_message = "Inconnu"
-    
-    # Calculer le total des messages
-    total_messages = sum(user_data["count"] for user_data in results.values())
-    
-    # Construire le contenu à écrire
-    output_content = []
-    output_content.append(f"Total des messages entre : {first_message} et {last_message}\n\n")
-
-    if keyword != "":
-        output_content.append("Liste des utilisateurs ayant envoyé : '"+ keyword +"'\n")
-    else:
-        output_content.append("Liste des utilisateurs et nombre total de messages :\n")
-    
-    for idx, (user, data) in enumerate(sorted(results.items(), key=lambda x: x[1]["count"], reverse=True), start=1):
-        output_content.append(f"{idx}. {user} (Premier message : {data['first_message']}) : {data['count']}\n")
-    
-    output_content.append(f"\nCompte total des messages : {total_messages}\n")
-    
-    # Convertir le contenu en chaîne de caractères
-    output_string = "".join(output_content)
-    
-    # Afficher dans la console
-    st.write(output_string)
-
-    st.download_button(
-        label="Télécharger en txt",
-        data=output_string,
-        file_name= group_name+"_export.txt",
-        mime="text/plain"
+        Whether you're managing group conversations or organizing digital documents, 
+        this application provides simple, efficient tools for your needs.
+        """
     )
 
-
-# EXECUTION
-st.title(':blue[Whastats]')
-file = st.file_uploader("Importer vos données de discussion:", type=["txt"])
-
-# Vérification si un fichier a été téléchargé
-if file is not None:
-    group_name = "Aucun groupe trouvé"
-    group_infos, group_name = extract_group_details(file)
-    
-    st.write(group_infos)
-    
-    if group_infos or True:
-        # Obtenir la plage de dates disponibles
-        date_min, date_max = get_date_range(file)
+with col2:
+    st.info(
+        """
+        **Quick Navigation:**
         
-        col1, col2 = st.columns(2)
-        with col1:
-            date_start = st.date_input("Date de début", value=date_min, min_value=date_min, max_value=date_max)
-        with col2:
-            date_end = st.date_input("Date de fin", value=date_max, min_value=date_min, max_value=date_max)
+        Use the sidebar to access:
+        - WhatsApp Message Counter
+        - Image to PDF Converter
         
-        keyword = st.text_input("Mot-clé (laissez vide pour les stats globales)", "")
-        if st.button("Stats"):
-            results, timestamps = analyze_messages(file, keyword, date_start, date_end)
-            analyse_datas(results, group_name, keyword, timestamps)
-    else:
-        st.write("Aucune donnée trouvée")
+        Or continue reading for more information about each feature.
+        """
+    )
+
+st.divider()
+
+# Features section
+st.header("Available Features")
+
+# Feature 1: WhatsApp Message Counter
+st.subheader("1. WhatsApp Message Counter")
+
+feat_col1, feat_col2 = st.columns([1, 1])
+
+with feat_col1:
+    st.write(
+        """
+        **What it does:**
+        Analyze your WhatsApp chat exports and get detailed statistics about message counts by user.
+        
+        **Key capabilities:**
+        - Count total messages per user
+        - Search for specific keywords or phrases
+        - Filter messages by date range
+        - Identify most active members
+        - Export results as text files
+        """
+    )
+
+with feat_col2:
+    st.write(
+        """
+        **Supported functionality:**
+        - Parse WhatsApp text exports
+        - Preserve message timestamps
+        - Track first message of each user
+        - Sort users by activity level
+        - Download formatted reports
+        
+        **Perfect for:**
+        - Group chat analytics
+        - Finding specific conversations
+        - Understanding participation patterns
+        - Archiving statistics
+        """
+    )
+
+st.divider()
+
+# Feature 2: Image to PDF Converter
+st.subheader("2. Image to PDF Converter")
+
+feat_col3, feat_col4 = st.columns([1, 1])
+
+with feat_col3:
+    st.write(
+        """
+        **What it does:**
+        Convert multiple image files into a single, organized PDF document in seconds.
+        
+        **Key capabilities:**
+        - Upload multiple images at once
+        - Automatic format conversion (JPG, PNG to PDF)
+        - Preserve image quality
+        - Control image ordering
+        - Enable easy sharing and storage
+        """
+    )
+
+with feat_col4:
+    st.write(
+        """
+        **Supported formats:**
+        - JPG / JPEG files
+        - PNG files
+        - Single or multiple images
+        
+        **Perfect for:**
+        - Scanning document collections
+        - Creating photo albums
+        - Organizing receipts or invoices
+        - Preparing documents for printing
+        - Merging multiple scans
+        """
+    )
+
+st.divider()
+
+# How to use section
+st.header("Getting Started")
+
+col_howto1, col_howto2 = st.columns(2)
+
+with col_howto1:
+    st.subheader("WhatsApp Message Counter")
+    with st.expander("Step-by-step guide", expanded=False):
+        st.write(
+            """
+            **Step 1: Export your chat**
+            - On iPhone: Open chat → Contact info → Export Chat → Without Media
+            - On Android: Open chat → Menu → More → Export Chat → Without Media
+            
+            **Step 2: Navigate to the feature**
+            - Click "WhatsApp Message Counter" in the sidebar
+            
+            **Step 3: Upload and configure**
+            - Upload your .txt export file
+            - View group information
+            - Set date range (optional)
+            - Enter keyword to search (optional)
+            
+            **Step 4: Analyze**
+            - Click "Generate Statistics" button
+            - Review the results
+            - Download the report if needed
+            """
+        )
+
+with col_howto2:
+    st.subheader("Image to PDF Converter")
+    with st.expander("Step-by-step guide", expanded=False):
+        st.write(
+            """
+            **Step 1: Prepare images**
+            - Gather images in JPG or PNG format
+            - Keep them in desired order (alphabetical or numbered)
+            
+            **Step 2: Navigate to the feature**
+            - Click "Image to PDF Converter" in the sidebar
+            
+            **Step 3: Upload**
+            - Click file uploader
+            - Select one or more image files
+            - Images will be listed for verification
+            
+            **Step 4: Convert**
+            - Review estimated PDF size
+            - Click "Convert to PDF" button
+            - Download the generated PDF file
+            """
+        )
+
+st.divider()
+
+# FAQ Section
+st.header("Frequently Asked Questions")
+
+faq_col1, faq_col2 = st.columns(2)
+
+with faq_col1:
+    st.subheader("WhatsApp Counter FAQ")
+    
+    with st.expander("What formats are supported?"):
+        st.write("Only .txt files exported directly from WhatsApp are supported.")
+    
+    with st.expander("Can I search for multiple keywords?"):
+        st.write("Currently, you can search for one keyword at a time. Leave empty for overall statistics.")
+    
+    with st.expander("Is my data stored?"):
+        st.write("No. All data is processed locally and immediately discarded after analysis.")
+
+with faq_col2:
+    st.subheader("Image Converter FAQ")
+    
+    with st.expander("What image formats work?"):
+        st.write("JPG, JPEG, and PNG formats are supported. Other formats will be skipped.")
+    
+    with st.expander("What's the file size limit?"):
+        st.write("There's no strict limit, but very large files may take longer to process.")
+    
+    with st.expander("How is image order determined?"):
+        st.write("Images are processed in alphabetical order of filename by default.")
+
+st.divider()
+
+# Technical Information
+st.header("Technical Information")
+
+tech_col1, tech_col2, tech_col3 = st.columns(3)
+
+with tech_col1:
+    st.subheader("Architecture")
+    st.write(
+        """
+        - Multi-page Streamlit application
+        - Modular utility structure
+        - Clean separation of concerns
+        - Optimized for performance
+        """
+    )
+
+with tech_col2:
+    st.subheader("Data Privacy")
+    st.write(
+        """
+        - No data storage
+        - No external uploads
+        - Local processing only
+        - Files not retained
+        - GDPR compliant
+        """
+    )
+
+with tech_col3:
+    st.subheader("Technologies")
+    st.write(
+        """
+        - Streamlit (web framework)
+        - Pillow (image processing)
+        - Python 3.8+
+        - Pure Python implementation
+        """
+    )
+
+st.divider()
+
+# Footer
+st.write("")
+st.markdown(
+    """
+    ---
+    **Whatsapp Stats** | Multi-purpose Utility Application  
+    Version 2.1 | April 2026
+    """
+)
